@@ -22,7 +22,7 @@ uint256 constant ELITE_PRICE = 8_880_000_000 ether;
 
 uint8 constant MIN_TIER = 1;
 uint8 constant MAX_TIER = 24;
-uint8 constant TREASURY_FEE = 3;
-uint8 constant LAUNCHPAD_FEE = 5;
-uint8 constant LAUNCHPAD_FEE_ON_CLAIM = 3;
+uint8 constant LAUNCHPAD_FEE = 3;
+uint8 constant TREASURY_FEE = 5;
+uint8 constant TREASURY_FEE_ON_CLAIM = 3;
 uint8 constant PERCENTAGE_BASE = 100;

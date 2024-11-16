@@ -12,8 +12,8 @@ import "./lib/OracleLibrary.sol";
 import "./lib/TickMath.sol";
 import "./lib/constants.sol";
 
-/// @title AwesomeX NFTs contract
-contract AwesomeXNFTs is ERC721A, Ownable2Step {
+/// @title AwesomeX Hybrid NFTs contract
+contract AwesomeXHybridNFTs is ERC721A, Ownable2Step {
     using SafeERC20 for IERC20;
     using Strings for uint8;
 
@@ -23,7 +23,7 @@ contract AwesomeXNFTs is ERC721A, Ownable2Step {
     string private baseURI;
     string public contractURI;
 
-    mapping (uint256 tokenId => uint8) public tiers;
+    mapping(uint256 tokenId => uint8) public tiers;
 
     /// @notice Time used for TWAP calculation.
     uint32 public secondsAgo = 5 * 60;
@@ -49,7 +49,7 @@ contract AwesomeXNFTs is ERC721A, Ownable2Step {
     // --------------------------- CONSTRUCTOR --------------------------- //
 
     constructor(address owner_, string memory contractURI_, string memory baseURI_)
-        ERC721A("AwesomeX NFTs", "AWXN")
+        ERC721A("AwesomeX Hybrid NFTs", "AXH")
         Ownable(owner_)
     {
         if (bytes(contractURI_).length == 0) revert ZeroInput();
@@ -66,7 +66,7 @@ contract AwesomeXNFTs is ERC721A, Ownable2Step {
         if (!isSaleActive) revert SaleInactive();
         uint256 amount = tieredNfts.length;
         if (amount == 0) revert ZeroInput();
-        (uint256 price, uint256 treasuryFee, uint256 launchpadFee, ) = _processNftMint(tieredNfts, amount);
+        (uint256 price, uint256 treasuryFee, uint256 launchpadFee,) = _processNftMint(tieredNfts, amount);
         IERC20 awesomeX = IERC20(AWESOMEX);
         awesomeX.safeTransferFrom(msg.sender, address(this), price);
         awesomeX.safeTransferFrom(msg.sender, AWESOMEX_TREASURY, treasuryFee);
@@ -128,9 +128,9 @@ contract AwesomeXNFTs is ERC721A, Ownable2Step {
         if (amount == 0) revert ZeroInput();
         address originalOwner = ownerOf(tokenIds[0]);
         if (originalOwner != msg.sender) revert Unauthorized();
-        (uint256 totalClaim, uint256 launchpadFee) = _processNftBurn(tokenIds, amount, originalOwner);
+        (uint256 totalClaim, uint256 treasuryFee) = _processNftBurn(tokenIds, amount, originalOwner);
         IERC20 awesomeX = IERC20(AWESOMEX);
-        awesomeX.safeTransfer(AWESOMEX_LAUNCHPAD, launchpadFee);
+        awesomeX.safeTransfer(AWESOMEX_TREASURY, treasuryFee);
         awesomeX.safeTransfer(msg.sender, totalClaim);
         emit Claim(amount);
     }
@@ -212,7 +212,7 @@ contract AwesomeXNFTs is ERC721A, Ownable2Step {
     /// @dev Should not be called by contracts.
     function getTotalNftsPerTiers(uint256 start, uint256 limit) external view returns (uint256[] memory total) {
         uint256 totalTokenIds = _nextTokenId();
-        uint256 end = start + limit > totalTokenIds ? totalTokenIds : start + limit; 
+        uint256 end = start + limit > totalTokenIds ? totalTokenIds : start + limit;
         total = new uint256[](24);
         for (uint256 tokenId = start; tokenId < end; tokenId++) {
             if (_exists(tokenId)) {
@@ -252,9 +252,12 @@ contract AwesomeXNFTs is ERC721A, Ownable2Step {
         return 1;
     }
 
-    function _processNftMint(uint8[] memory tieredNfts, uint256 amount) internal returns (uint256 price, uint256 treasuryFee, uint256 launchpadFee, uint256 total) {
+    function _processNftMint(uint8[] memory tieredNfts, uint256 amount)
+        internal
+        returns (uint256 price, uint256 treasuryFee, uint256 launchpadFee, uint256 total)
+    {
         uint256 currentIndex = _nextTokenId();
-        for (uint i = 0; i < amount; i++) {
+        for (uint256 i = 0; i < amount; i++) {
             uint8 tier = tieredNfts[i];
             if (tier < MIN_TIER || tier > MAX_TIER) revert IncorrectTier();
             tiers[currentIndex + i] = tier;
@@ -265,16 +268,19 @@ contract AwesomeXNFTs is ERC721A, Ownable2Step {
         total = price + treasuryFee + launchpadFee;
     }
 
-    function _processNftBurn(uint256[] memory tokenIds, uint256 amount, address originalOwner) internal returns (uint256 totalClaim, uint256 launchpadFee) {
-        for (uint i = 0; i < amount; i++) {
+    function _processNftBurn(uint256[] memory tokenIds, uint256 amount, address originalOwner)
+        internal
+        returns (uint256 totalClaim, uint256 treasuryFee)
+    {
+        for (uint256 i = 0; i < amount; i++) {
             uint256 tokenId = tokenIds[i];
             uint8 tier = tiers[tokenId];
             if (ownerOf(tokenId) != originalOwner) revert Unauthorized();
             _burn(tokenId);
             totalClaim += _getTierPrice(tier);
         }
-        launchpadFee = totalClaim * LAUNCHPAD_FEE_ON_CLAIM / PERCENTAGE_BASE;
-        totalClaim -= launchpadFee;
+        treasuryFee = totalClaim * TREASURY_FEE_ON_CLAIM / PERCENTAGE_BASE;
+        totalClaim -= treasuryFee;
     }
 
     function _getTierPrice(uint8 tier) internal pure returns (uint256) {
@@ -292,7 +298,8 @@ contract AwesomeXNFTs is ERC721A, Ownable2Step {
 
     function _swapETHForAwesomeX(uint256 minAmountOut, uint256 deadline) internal {
         IWETH9(WETH9).deposit{value: msg.value}();
-        bytes memory path = abi.encodePacked(WETH9, POOL_FEE_1PERCENT, TITANX, POOL_FEE_1PERCENT, DRAGONX, POOL_FEE_1PERCENT, AWESOMEX);
+        bytes memory path =
+            abi.encodePacked(WETH9, POOL_FEE_1PERCENT, TITANX, POOL_FEE_1PERCENT, DRAGONX, POOL_FEE_1PERCENT, AWESOMEX);
         ISwapRouter.ExactInputParams memory params = ISwapRouter.ExactInputParams({
             path: path,
             recipient: address(this),
