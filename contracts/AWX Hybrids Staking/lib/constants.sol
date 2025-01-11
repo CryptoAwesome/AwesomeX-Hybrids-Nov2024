@@ -3,7 +3,7 @@ pragma solidity ^0.8.26;
 
 // ===================== Contract Addresses =====================================
 address constant AWESOMEX_NFTS = 0xA3d816102730Cc7c98cE3C0A495A4d0cbf347f77;
-address constant TITANX = 0xF19308F923582A6f7c465e5CE7a9Dc1BEC6665B1;
+address constant AWESOMEX = 0xa99AFcC6Aa4530d01DFFF8E55ec66E4C424c048c;
 
 // ===================== VARIABLES ===================================================
 uint8 constant AWESOME_MULTIPLIER = 1;

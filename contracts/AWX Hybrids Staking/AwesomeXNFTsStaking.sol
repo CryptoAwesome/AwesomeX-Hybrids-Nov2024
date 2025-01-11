@@ -20,6 +20,7 @@ contract AwesomeXNFTsStaking is Ownable2Step {
     }
 
     IAwesomeXHybridNFTs constant AWX_NFTs = IAwesomeXHybridNFTs(AWESOMEX_NFTS);
+    IERC20 constant AWX = IERC20(AWESOMEX);
 
     uint32 public currentCycle = 1;
     uint256 public totalStakedMultipliers;
@@ -182,7 +183,7 @@ contract AwesomeXNFTsStaking is Ownable2Step {
 
     /// @notice Total TitanX available for next cycle creation.
     function getRewardPool() public view returns (uint256) {
-        return IERC20(TITANX).balanceOf(address(this)) + totalRewadsPaid - totalRewardPool;
+        return AWX.balanceOf(address(this)) + totalRewadsPaid - totalRewardPool;
     }
 
     /// @notice Claimable rewards available for NFT.
@@ -251,13 +252,13 @@ contract AwesomeXNFTsStaking is Ownable2Step {
     function _processRewardPayout(uint256 amount) internal {
         totalClaimed[msg.sender] += amount;
         totalRewadsPaid += amount;
-        IERC20(TITANX).safeTransfer(msg.sender, amount);
+        AWX.safeTransfer(msg.sender, amount);
         emit Claim(msg.sender);
     }
 
     function _processIncentiveFee(uint256 amount) internal returns (uint256) {
         uint256 incentive = amount * incentiveFeeBPS / BPS_BASE;
-        IERC20(TITANX).safeTransfer(msg.sender, incentive);
+        AWX.safeTransfer(msg.sender, incentive);
         return amount - incentive;
     }
 
